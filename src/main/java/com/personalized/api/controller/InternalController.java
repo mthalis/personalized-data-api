@@ -9,10 +9,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/internal")
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class InternalController {
     @PostMapping("/product")
     public ResponseEntity<Void> upsertProduct(@Valid @RequestBody ProductMetadataRequest request) {
         internalDataService.upsertProduct(request);
+        log.info("action=upsert_product_request productId={}", request.getProductId());
         return ResponseEntity.ok().build();
     }
 
@@ -56,6 +59,8 @@ public class InternalController {
     @PostMapping("/shopper/shelf")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void upsertShopperShelf(@Valid @RequestBody ShopperShelfRequest request) {
+        log.info("action=upsert_shelf_request shopperId={} itemCount={}",
+                request.getShopperId(), request.getShelf().size());
         internalDataService.upsertShopperShelf(request);
     }
 }

@@ -10,7 +10,6 @@ import com.personalized.api.repository.ShopperShelfRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +25,6 @@ public class InternalDataService {
 
     /**
      * Upsert product metadata — DB-agnostic load-then-save.
-     * Works on both H2 (local/test) and PostgreSQL (prod).
      */
     @Transactional
     public void upsertProduct(ProductMetadataRequest req) {
@@ -44,6 +42,7 @@ public class InternalDataService {
             product.setCreatedAt(Instant.now());
         }
         productRepository.save(product);
+        log.debug("action=upsert_product_complete productId={}", req.getProductId());
     }
 
     /**
@@ -53,10 +52,8 @@ public class InternalDataService {
      *   1. Validate all productIds exist — fail fast before any mutation.
      *   2. Delete the current shelf rows.
      *   3. Insert all new shelf rows.
-     *   4. Evict cache so the next external read reflects the new data.
      */
     @Transactional
-    @CacheEvict(value = "shelf", allEntries = true)
     public void upsertShopperShelf(ShopperShelfRequest req) {
         log.info("Replacing shelf for shopper: {} ({} items)",
                 req.getShopperId(), req.getShelf().size());
@@ -64,6 +61,8 @@ public class InternalDataService {
         // Step 1 — validate all product references before touching the DB
         for (ShopperShelfRequest.ShelfItem item : req.getShelf()) {
             if (!productRepository.existsById(item.getProductId())) {
+                log.warn("action=upsert_shelf_validation_failed shopperId={} unknownProductId={}",
+                        req.getShopperId(), item.getProductId());
                 throw new EntityNotFoundException(
                         "Product not found: " + item.getProductId()
                                 + ". Register it via POST /internal/product first.");
@@ -71,6 +70,7 @@ public class InternalDataService {
         }
 
         // Step 2 — delete old shelf
+        log.debug("action=delete_existing_shelf shopperId={}", req.getShopperId());
         shelfRepository.deleteAllByShopperId(req.getShopperId());
         shelfRepository.flush();
 
@@ -86,5 +86,7 @@ public class InternalDataService {
 
             shelfRepository.save(shelf);
         }
+        log.info("action=upsert_shelf_complete shopperId={} itemCount={}",
+                req.getShopperId(), req.getShelf().size());
     }
 }

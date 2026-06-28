@@ -11,13 +11,15 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/external")
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "External (eCommerce)", description = "Read endpoints for eCommerce servers. Requires EXTERNAL role JWT.")
@@ -54,6 +56,8 @@ public class ExternalController {
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) Integer limit
     ) {
+        log.info("action=get_products_request shopperId={} category={} brand={} limit={}",
+                shopperId, category, brand, limit);
         return externalQueryService.getProducts(shopperId, category, brand, limit);
     }
 

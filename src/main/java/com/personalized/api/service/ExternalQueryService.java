@@ -25,16 +25,17 @@ public class ExternalQueryService {
     public List<ProductResponse> getProducts(String shopperId, String category, String brand, Integer limit) {
 
         int effectiveLimit = resolveLimit(limit);
-        log.debug("Cache MISS — querying DB: shopper={} cat={} brand={} limit={}",
+        log.info("action=get_products shopperId={} category={} brand={} limit={}",
                 shopperId, category, brand, effectiveLimit);
 
         List<ProductResponse> results =
                 shelfRepository.findPersonalisedProducts(shopperId, category, brand);
 
-        // Slice in Java — keeps the JPQL portable across H2 and PostgreSQL
-        return results.size() <= effectiveLimit
-                ? results
-                : results.subList(0, effectiveLimit);
+        List<ProductResponse> sliced = results.size() <= effectiveLimit
+                ? results : results.subList(0, effectiveLimit);
+        log.info("action=get_products_complete shopperId={} totalFound={} returned={}",
+                shopperId, results.size(), sliced.size());
+        return sliced;
     }
 
     int resolveLimit(Integer requested) {

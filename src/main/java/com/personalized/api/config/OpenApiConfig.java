@@ -50,7 +50,7 @@ public class OpenApiConfig {
                                 .name("Personalized Data API Team")))
                 .servers(List.of(
                         new Server().url("http://localhost:8080").description("Local dev"),
-                        new Server().url("https://api.yourdomain.com").description("Production")
+                        new Server().url("https://api.proddomain.com").description("Production")
                 ))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH))
                 .components(new Components()
