@@ -59,8 +59,7 @@ public class InternalController {
     @PostMapping("/shopper/shelf")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void upsertShopperShelf(@Valid @RequestBody ShopperShelfRequest request) {
-        log.info("action=upsert_shelf_request shopperId={} itemCount={}",
-                request.getShopperId(), request.getShelf().size());
+        log.info("action=upsert_shelf_request shopperId={} ", request.getShopperId());
         internalDataService.upsertShopperShelf(request);
     }
 }

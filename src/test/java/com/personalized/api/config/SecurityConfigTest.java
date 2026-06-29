@@ -1,5 +1,6 @@
 package com.personalized.api.config;
 
+import com.personalized.api.security.JwtAuthenticationEntryPoint;
 import com.personalized.api.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,9 @@ class SecurityConfigTest {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Mock
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Mock
     private AuthenticationConfiguration authenticationConfiguration;
 
     @Mock
@@ -35,7 +39,7 @@ class SecurityConfigTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        securityConfig = new SecurityConfig(jwtAuthenticationFilter);
+        securityConfig = new SecurityConfig(jwtAuthenticationFilter, jwtAuthenticationEntryPoint);
 
         setField("username", "testuser");
         setField("password", "testpassword");

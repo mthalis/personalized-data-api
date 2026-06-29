@@ -24,7 +24,7 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    @PostMapping("/login")
+    @PostMapping("/token")
     public Map<String, String> login(@Valid @RequestBody AuthRequest request) {
 
         authenticationManager.authenticate(

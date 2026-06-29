@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ProblemDetail missingRequestParameter(EntityNotFoundException ex) {
+    public ProblemDetail missingRequestParameter(MissingServletRequestParameterException ex) {
         log.warn("Required request parameter not found: {}", ex.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }

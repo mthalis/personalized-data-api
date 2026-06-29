@@ -1,62 +1,113 @@
 package com.personalized.api.exception;
 
-import com.personalized.api.controller.ExternalController;
-import com.personalized.api.service.ExternalQueryService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
-import java.util.Set;
+import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-@WebMvcTest(ExternalController.class)
+@ExtendWith(MockitoExtension.class)
 class GlobalExceptionHandlerTest {
 
-    @Autowired MockMvc mockMvc;
-    @MockitoBean
-    ExternalQueryService externalQueryService;
+    @InjectMocks
+    private GlobalExceptionHandler handler;
 
+    @Mock
+    private MethodArgumentNotValidException methodArgumentNotValidException;
+
+    @Mock
+    private BindingResult bindingResult;
+
+    // -----------------------------
+    // 1. MethodArgumentNotValidException
+    // -----------------------------
     @Test
-    @WithMockUser(roles = "EXTERNAL")
-    @DisplayName("handles ConstraintViolationException with 400")
-    void handlesConstraintViolation() throws Exception {
-        when(externalQueryService.getProducts(any(), any(), any(), any()))
-                .thenThrow(new ConstraintViolationException("invalid param", Set.of()));
+    void testHandleValidation() {
 
-        mockMvc.perform(get("/api/products").param("shopperId", "S-1"))
-                .andExpect(status().isBadRequest());
+        FieldError error1 = new FieldError("obj", "productId", "must not be blank");
+        FieldError error2 = new FieldError("obj", "name", "must not be blank");
+
+        when(methodArgumentNotValidException.getBindingResult())
+                .thenReturn(bindingResult);
+
+        when(bindingResult.getFieldErrors())
+                .thenReturn(List.of(error1, error2));
+
+        ProblemDetail result = handler.handleValidation(methodArgumentNotValidException);
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getStatus());
+        assertEquals("productId: must not be blank, name: must not be blank", result.getDetail());
     }
 
+    // -----------------------------
+    // 2. ConstraintViolationException
+    // -----------------------------
     @Test
-    @WithMockUser(roles = "EXTERNAL")
-    @DisplayName("handles EntityNotFoundException with 422")
-    void handlesEntityNotFound() throws Exception {
-        when(externalQueryService.getProducts(any(), any(), any(), any()))
-                .thenThrow(new EntityNotFoundException("Product not found: P-X"));
+    void testHandleConstraint() {
 
-        mockMvc.perform(get("/api/products").param("shopperId", "S-1"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.detail").value("Product not found: P-X"));
+        ConstraintViolationException ex =
+                new ConstraintViolationException("shopperId is required", null);
+
+        ProblemDetail result = handler.handleConstraint(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getStatus());
+        assertEquals("shopperId is required", result.getDetail());
     }
 
+    // -----------------------------
+    // 3. EntityNotFoundException
+    // -----------------------------
     @Test
-    @WithMockUser(roles = "EXTERNAL")
-    @DisplayName("handles generic Exception with 500")
-    void handlesGenericException() throws Exception {
-        when(externalQueryService.getProducts(any(), any(), any(), any()))
-                .thenThrow(new RuntimeException("Something blew up"));
+    void testHandleEntityNotFound() {
 
-        mockMvc.perform(get("/api/products").param("shopperId", "S-1"))
-                .andExpect(status().isInternalServerError());
+        EntityNotFoundException ex =
+                new EntityNotFoundException("Product not found");
+
+        ProblemDetail result = handler.handleEntityNotFound(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getStatus());
+        assertEquals("Product not found", result.getDetail());
+    }
+
+    // -----------------------------
+    // 4. MissingServletRequestParameterException
+    // -----------------------------
+    @Test
+    void testMissingRequestParameter() {
+
+        MissingServletRequestParameterException ex =
+                new MissingServletRequestParameterException("shopperId", "String");
+
+        ProblemDetail result = handler.missingRequestParameter(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getStatus());
+        assertTrue(result.getDetail().contains("shopperId"));
+    }
+
+    // -----------------------------
+    // 5. Generic Exception (catch-all)
+    // -----------------------------
+    @Test
+    void testHandleGeneric() {
+
+        Exception ex = new RuntimeException("Something went wrong");
+
+        ProblemDetail result = handler.handleGeneric(ex);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), result.getStatus());
+        assertEquals("An unexpected error occurred.", result.getDetail());
     }
 }
